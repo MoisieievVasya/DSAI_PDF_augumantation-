@@ -8,7 +8,7 @@ from openai import OpenAI
 from pikepdf import Stream, Array
 
 
-def generate_response(file_bytes: bytes, prompt: str) -> str:
+def generate_response(file_bytes: bytes, prompt: str) -> tuple[str, dict]:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -18,7 +18,8 @@ def generate_response(file_bytes: bytes, prompt: str) -> str:
     filled = generate_content_openai(structure, prompt=prompt)
 
     out_pdf = merge_filled_content(tmp_path, filled)
-    return out_pdf
+    return out_pdf, filled
+
 
 def extract_template(pdf_path):
     """Витягає текст та поля {{field}} із PDF."""
@@ -33,6 +34,8 @@ def extract_template(pdf_path):
                 "fields": fields
             })
     return structure
+
+
 def generate_content_openai(template_struct, prompt=""):
     """Заповнює поля за допомогою OpenAI GPT (v1 SDK)."""
     openai_model = "gpt-3.5-turbo"
@@ -62,6 +65,7 @@ def generate_content_openai(template_struct, prompt=""):
             return json.loads(match.group(0))
         raise
 
+
 def merge_filled_content(pdf_path, filled_json, output_pdf_path="augmented.pdf"):
     pdf = pikepdf.open(pdf_path)
 
@@ -84,8 +88,10 @@ def merge_filled_content(pdf_path, filled_json, output_pdf_path="augmented.pdf")
                 print(field, replacement)
                 if not isinstance(replacement, str):
                     replacement = json.dumps(replacement, ensure_ascii=False)
-                pattern = r"\{\{\s*"+re.escape(field)+r"\s*\}\}"
+                pattern = r"\{\{\s*" + re.escape(field) + r"\s*\}\}"
                 text = re.sub(pattern, replacement, text)
+
+                # print(text)
 
             # 3) Build a new Stream for writing
             patched_streams.append(Stream(pdf, text.encode("latin-1")))

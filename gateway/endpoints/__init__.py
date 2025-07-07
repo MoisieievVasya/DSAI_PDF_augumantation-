@@ -21,7 +21,13 @@ async def generate_pdf(
         for img in images:
             file_bytes += await img.read()
 
-    result_pdf_path = generate_response(file_bytes, prompt)
+    result_pdf_path, filled_json = generate_response(file_bytes, prompt)
+
+    # Save filled JSON for possible reuse
+    with open(result_pdf_path + ".json", "w") as jf:
+        import json
+        json.dump(filled_json, jf)
+
     return FileResponse(result_pdf_path, media_type="application/pdf", filename="generated_invoice.pdf")
 
 @router.post("/evaluate")

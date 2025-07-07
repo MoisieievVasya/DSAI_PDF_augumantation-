@@ -14,6 +14,9 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+      - ./gateway:/app/gateway
+      - ./service:/app/service
+      - ./frontend:/app/frontend
     environment:
       - PYTHONUNBUFFERED=1
     networks:
@@ -28,6 +31,9 @@ services:
       - "8501:8501"
     volumes:
       - .:/app
+      - ./gateway:/app/gateway
+      - ./service:/app/service
+      - ./frontend:/app/frontend
     depends_on:
       - fastapi
     networks:
