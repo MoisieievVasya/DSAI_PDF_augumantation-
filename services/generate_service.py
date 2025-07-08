@@ -1,11 +1,14 @@
 import tempfile
-import config
+
+import pdfplumber
+
+import pikepdf
 import json
 import re
-import pdfplumber
-import pikepdf
-from openai import OpenAI
 from pikepdf import Stream, Array
+from openai import OpenAI
+
+import config
 
 
 def generate_response(file_bytes: bytes, prompt: str) -> tuple[str, dict]:
@@ -15,7 +18,7 @@ def generate_response(file_bytes: bytes, prompt: str) -> tuple[str, dict]:
 
     structure = extract_template(tmp_path)
 
-    filled = generate_content_openai(structure, prompt=prompt)
+    filled = generate_content_openai(structure, user_prompt=prompt)
 
     out_pdf = merge_filled_content(tmp_path, filled)
     return out_pdf, filled
@@ -35,21 +38,22 @@ def extract_template(pdf_path):
             })
     return structure
 
+openai_model = "gpt-4o-mini"
 
-def generate_content_openai(template_struct, prompt=""):
+def generate_content_openai(template_struct, user_prompt: str ):
     """Заповнює поля за допомогою OpenAI GPT (v1 SDK)."""
-    openai_model = "gpt-3.5-turbo"
     client = OpenAI(api_key=config.get_required_env(config.OPEN_AI_KEY_ENV))
-    prompt_text = (
+    prompt = (
         f"You are given a JSON template structure. Fill each placeholder with appropriate text and "
         f"ONLY output the filled fields as a JSON object mapping field names to content. "
         f"Template: {json.dumps(template_struct, ensure_ascii=False)}"
+        f"also here is user prompt {user_prompt}"
     )
     resp = client.chat.completions.create(
         model=openai_model,
         messages=[
             {"role": "system", "content": "Fill the JSON template fields and output pure JSON."},
-            {"role": "user", "content": prompt_text}
+            {"role": "user", "content": prompt}
         ],
         temperature=0.7,
         max_tokens=1000
@@ -64,6 +68,8 @@ def generate_content_openai(template_struct, prompt=""):
         if match:
             return json.loads(match.group(0))
         raise
+
+
 
 
 def merge_filled_content(pdf_path, filled_json, output_pdf_path="augmented.pdf"):
@@ -88,7 +94,7 @@ def merge_filled_content(pdf_path, filled_json, output_pdf_path="augmented.pdf")
                 print(field, replacement)
                 if not isinstance(replacement, str):
                     replacement = json.dumps(replacement, ensure_ascii=False)
-                pattern = r"\{\{\s*" + re.escape(field) + r"\s*\}\}"
+                pattern = r"\{\{\s*"+re.escape(field)+r"\s*\}\}"
                 text = re.sub(pattern, replacement, text)
 
                 # print(text)

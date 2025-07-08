@@ -31,9 +31,6 @@ async def generate_pdf(
     return FileResponse(result_pdf_path, media_type="application/pdf", filename="generated_invoice.pdf")
 
 @router.post("/evaluate")
-def eval(payload: dict):
-    df, metrics = evaluate_response(payload)
-    return {
-        "table": df.to_dict(orient="records"),
-        "metrics": metrics
-    }
+async def eval():
+    result = evaluate_response()
+    return result

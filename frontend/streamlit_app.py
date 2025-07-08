@@ -2,7 +2,8 @@ import streamlit as st
 import base64
 import requests
 import json
-import os
+import matplotlib.pyplot as plt
+import pandas as pd
 
 def show_pdf(pdf_data):
     base64_pdf = base64.b64encode(pdf_data).decode('utf-8')
@@ -48,23 +49,35 @@ if st.button("Generate") and uploaded_file:
         else:
             st.error(f"❌ Generation failed: {response.status_code}")
 
-# Pre-populate text area
-generated_json = st.text_area("Paste generated JSON here", value=st.session_state.get("generated_json", ""))
-
-if st.button("Evaluate") and generated_json:
+if st.button("Evaluate"):
     try:
-        parsed_json = json.loads(generated_json)
-        eval_response = requests.post("http://fastapi:8000/evaluate", json=parsed_json)
+        eval_response = requests.post("http://fastapi:8000/evaluate")
 
         if eval_response.status_code == 200:
             result = eval_response.json()
             table = result["table"]
             metrics = result["metrics"]
 
-            st.dataframe(table)
+            st.dataframe(pd.DataFrame(table))
 
-            if st.button("Show Evaluation Metrics"):
-                st.json(metrics)
+            st.markdown("### 📊 Evaluation Metrics")
+
+            # Semantic Quality
+            st.markdown("📌 **Semantic Quality:**")
+            st.markdown(f"- Avg Semantic Similarity: {metrics.get('avg_semantic_similarity', 'N/A')}")
+            st.markdown(f"- Avg All Similarity: {metrics.get('avg_all_similarity', 'N/A')}")
+            st.markdown(f"- Document Coherence: {metrics.get('document_coherence', 'N/A')}")
+
+            # Diversity (Distinct)
+            st.markdown("📌 **Diversity (Distinct):**")
+            st.markdown(f"- Distinct-1: {metrics.get('distinct-1', 'N/A')}")
+            st.markdown(f"- Distinct-2: {metrics.get('distinct-2', 'N/A')}")
+            st.markdown(f"- Distinct-3: {metrics.get('distinct-3', 'N/A')}")
+
+            # Issues
+            st.markdown("📌 **Issues:**")
+            st.markdown(f"- Low Similarity Fields: {metrics.get('low_similarity_fields', 'N/A')}")
+            st.markdown(f"- Invalid Format Fields: {metrics.get('invalid_format_fields', 'N/A')}")
 
         else:
             st.error(f"Evaluation failed: {eval_response.status_code}")
